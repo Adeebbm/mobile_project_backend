@@ -1,0 +1,9 @@
+CREATE TABLE ACCOUNT (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    phone_number VARCHAR(15) NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
