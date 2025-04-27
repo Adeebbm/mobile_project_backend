@@ -1,81 +1,60 @@
 <?php
-header("Content-Type: application/json");
-require_once 'connection.php';
+// add_property.php
 
-// Validate required fields
-if (!isset($_POST['owner_id'], $_POST['type'], $_POST['beds'], $_POST['baths'], 
-    $_POST['price'], $_POST['city'], $_FILES['image'], $_POST['street'], 
-    $_POST['area'], $_POST['description'], $_POST['date_built'])) {
-    
-    echo json_encode(["success" => false, "message" => "Missing fields"]);
-    exit;
-}
+header('Content-Type: application/json');
+include 'connection.php'; // assume you have a connection file
 
-// Validate image upload
-$image = $_FILES['image'];
-$imageFileName = uniqid() . "_" . basename($image['name']);
-$uploadDir = "./images/"; // Make sure this folder exists and is writable
-$uploadFile = $uploadDir . $imageFileName;
+$response = [];
 
-// Validate image file type (only allowing JPG, PNG, GIF)
-$imageFileType = strtolower(pathinfo($uploadFile, PATHINFO_EXTENSION));
-$allowedTypes = ['jpg', 'png', 'gif'];
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $type = $_POST['type']; 
+    $beds = (int)$_POST['beds']; 
+    $baths = (int)$_POST['baths']; 
+    $price = (double)$_POST['price'];
+    $city = $_POST['city'];
+    $street = $_POST['street'];
+    $area = (double)$_POST['area']; 
+    $description = $_POST['description']; 
+    $date_built = $_POST['date_built'];
+    $owner_id = (int)$_POST['owner_id']; 
+    $image_link = $_POST['image_link'];
 
-if (!in_array($imageFileType, $allowedTypes)) {
-    echo json_encode(["success" => false, "message" => "Only JPG, PNG, and GIF files are allowed"]);
-    exit;
-}
+ 
 
-// Check if the image was successfully uploaded
-if ($image['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(["success" => false, "message" => "Error uploading image"]);
-    exit;
-}
 
-// Move the uploaded image to the target directory
-if (!move_uploaded_file($image['tmp_name'], $uploadFile)) {
-    echo json_encode(["success" => false, "message" => "Failed to upload image"]);
-    exit;
-}
 
-// Prepare the SQL statement
-$query = "INSERT INTO ESTATE (
-    owner_id, type, beds, baths, price, city, image_link, street, 
-    area, description, date_built
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare("INSERT INTO ESTATE (type, beds, baths, price, city, image_link, street, area, description, date_built, owner_id) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param(
-    "isiidsssdss",
-    $_POST['owner_id'],
-    $_POST['type'],
-    $_POST['beds'],
-    $_POST['baths'],
-    $_POST['price'],
-    $_POST['city'],
-    $uploadFile, // Store the path to the uploaded image
-    $_POST['street'],
-    $_POST['area'],
-    $_POST['description'],
-    $_POST['date_built']
-);
+$stmt->bind_param("siidsssdssi", 
+$type, 
+$beds, 
+    $baths, 
+    $price, 
+    $city, 
+    $image_link, 
+    $street, 
+    $area, 
+    $description, 
+    $date_built, 
+    $owner_id
+    );
 
-// Execute and respond
-if ($stmt->execute()) {
-    $estate_id = $stmt->insert_id;
-    echo json_encode([
-        "success" => true,
-        "estate_id" => $estate_id,
-        "message" => "Property added successfully"
-    ]);
+    if ($stmt->execute()) {
+        $response['success'] = true;
+        $response['message'] = "Property added successfully!";
+        $response['estate_id'] = $stmt->insert_id; // Return the new estate_id if needed later
+    } else {
+        $response['success'] = false;
+        $response['message'] = "Database error: " . $stmt->error;
+    }
+
+    $stmt->close();
+    $conn->close();
 } else {
-    echo json_encode([
-        "success" => false,
-        "message" => "Error adding property: " . $stmt->error
-    ]);
+    $response['success'] = false;
+    $response['message'] = "Invalid request method!";
 }
 
-// Close the statement and connection
-$stmt->close();
-$conn->close();
+echo json_encode($response);
 ?>
